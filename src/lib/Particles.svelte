@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { theme } from './stores';
 
   let canvas: HTMLCanvasElement;
   let animationId: number;
@@ -33,8 +34,15 @@
       });
     }
 
+    let currentTheme: 'light' | 'dark' = 'dark';
+    const unsubscribe = theme.subscribe((v) => { currentTheme = v; });
+
     function animate() {
       ctx.clearRect(0, 0, width, height);
+
+      const isDark = currentTheme === 'dark';
+      const baseOpacity = isDark ? 1 : 0.4;
+      const lineOpacity = isDark ? 0.15 : 0.06;
 
       for (const p of particles) {
         p.x += p.vx;
@@ -45,7 +53,7 @@
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(168, 85, 247, ${p.opacity})`;
+        ctx.fillStyle = `rgba(168, 85, 247, ${p.opacity * baseOpacity})`;
         ctx.fill();
       }
 
@@ -59,7 +67,7 @@
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(168, 85, 247, ${0.15 * (1 - dist / maxDist)})`;
+            ctx.strokeStyle = `rgba(168, 85, 247, ${lineOpacity * (1 - dist / maxDist)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -81,6 +89,7 @@
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener('resize', handleResize);
+      unsubscribe();
     };
   });
 </script>

@@ -7,7 +7,14 @@
     <meta name="description" content="EduAdmin - Panel de administracion educativa" />
     <title>EduAdmin - Iniciar sesion</title>
   </head>
-  <body class="bg-gray-950 antialiased">
+  <body class="antialiased">
+    <script>
+      (function() {
+        var t = localStorage.getItem('theme');
+        if (t === 'light') document.documentElement.classList.remove('dark');
+        else document.documentElement.classList.add('dark');
+      })();
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

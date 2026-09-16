@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [svelte(),tailwindcss()],
   server: {
     proxy: {
-      '/server': 'http://localhost/eduadminOLD'
+      '/server': 'http://localhost/eduadmin-old'
     }
   }
 })

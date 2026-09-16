@@ -32,8 +32,8 @@ $uri = rtrim($rawUri, '/');
 if (preg_match('#^/server(.*)$#', $uri, $m)) {
     $uri = $m[1];
 }
-// Strip /eduadminOLD/server prefix if present (full path)
-if (preg_match('#^/eduadminOLD/server(.*)$#', $uri, $m)) {
+// Strip /eduadmin-old/server prefix if present (full path)
+if (preg_match('#^/eduadmin-old/server(.*)$#', $uri, $m)) {
     $uri = $m[1];
 }
 
@@ -51,6 +51,9 @@ $routeKey = "$method $uri";
 if (isset($routes[$routeKey])) {
     $handler = $routes[$routeKey];
     $handler();
+} elseif (preg_match('#^/informes/([^/]+)/([^/]+)/download$#', $uri, $m)) {
+    $_SERVER['REQUEST_URI_INFORMES'] = $m;
+    InformeController::download();
 } elseif (preg_match('#^/informes/([^/]+)/([^/]+)$#', $uri, $m)) {
     $_SERVER['REQUEST_URI_INFORMES'] = $m;
     InformeController::show();

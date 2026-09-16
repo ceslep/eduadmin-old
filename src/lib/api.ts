@@ -82,3 +82,38 @@ export async function getInforme(estudiante: string, anio: string): Promise<Info
   const response = await api<InformeData>(`/informes/${estudiante}/${anio}`);
   return response.data;
 }
+
+export async function downloadInforme(estudiante: string, anio: string, documento: string, nombre: string): Promise<void> {
+  const token = localStorage.getItem('token');
+
+  const response = await fetch(`${API_BASE}/informes/${estudiante}/${anio}/download`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ documento, nombre }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Error al descargar' }));
+    throw new Error(errorData.message || 'Error al descargar el informe');
+  }
+
+  const blob = await response.blob();
+  const contentDisposition = response.headers.get('Content-Disposition');
+  let filename = 'Informe.docx';
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename="?([^"]+)"?/);
+    if (match) filename = match[1];
+  }
+
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+}

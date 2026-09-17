@@ -1,16 +1,53 @@
 <?php
 
 require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/../helpers/Env.php';
+require_once __DIR__ . '/../helpers/AreaOrder.php';
 
 class Informe extends Model
 {
     protected static string $table = 'informes';
 
+    /**
+     * Años lectivos realmente disponibles en la tabla `informes`, con el
+     * número de informes cargados. Se usa para poblar el selector de periodo
+     * en lugar de una lista fija.
+     *
+     * @return list<array{anio: string, total: int}>
+     */
+    public static function availableYears(): array
+    {
+        $db = self::getLatin1Connection();
+
+        $rows = $db->query(
+            "SELECT anio, COUNT(*) AS total
+               FROM informes
+              WHERE anio IS NOT NULL AND anio <> ''
+              GROUP BY anio
+              ORDER BY anio DESC"
+        )->fetchAll();
+
+        return array_map(
+            static fn(array $row): array => [
+                'anio'  => (string) $row['anio'],
+                'total' => (int) $row['total'],
+            ],
+            $rows
+        );
+    }
+
     public static function findByAnioEstudiante(string $anio, string $estudiante): ?array
     {
         $db = self::getLatin1Connection();
+
+        // `codigo` es el número de matrícula del estudiante y vive en otra
+        // tabla, así que se trae en la misma consulta.
         $stmt = $db->prepare(
-            "SELECT * FROM informes WHERE anio = :anio AND estudiante = :estudiante LIMIT 1"
+            "SELECT i.*, m.codigo AS matricula_codigo
+               FROM informes i
+               LEFT JOIN matricula m ON m.ind = i.estudiante
+              WHERE i.anio = :anio AND i.estudiante = :estudiante
+              LIMIT 1"
         );
         $stmt->execute(['anio' => $anio, 'estudiante' => $estudiante]);
         $result = $stmt->fetch();
@@ -21,23 +58,33 @@ class Informe extends Model
 
         $result['informe'] = self::fixEncoding($result['informe']);
         $result['observaciones'] = self::fixEncoding($result['observaciones'] ?? '');
+        $result['aula'] = self::fixEncoding($result['aula'] ?? '');
+        $result['p1'] = self::fixEncoding($result['p1'] ?? '');
+        $result['p2'] = self::fixEncoding($result['p2'] ?? '');
+        $result['p3'] = self::fixEncoding($result['p3'] ?? '');
+        $result['director_de_grupo'] = self::fixEncoding($result['director_de_grupo'] ?? '');
         $result['parsed_informe'] = self::parseInforme($result['informe']);
         return $result;
     }
 
+    /**
+     * Los datos heredados están almacenados en latin1 dentro de una base
+     * utf8mb4, así que se abre una conexión aparte para leerlos sin que MySQL
+     * los reinterprete.
+     */
     private static function getLatin1Connection(): PDO
     {
-        $host = getenv('DB_HOST') ?: 'localhost';
-        $port = getenv('DB_PORT') ?: '3306';
-        $db = getenv('DB_NAME') ?: 'eduadmin';
-        $user = getenv('DB_USER') ?: 'root';
-        $pass = getenv('DB_PASS') ?: '';
+        $host = Env::get('DB_HOST', 'localhost');
+        $port = Env::get('DB_PORT', '3306');
+        $db   = Env::get('DB_NAME', 'eduadmin');
+        $user = Env::get('DB_USER', 'root');
+        $pass = Env::get('DB_PASS', '');
+
         $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=latin1";
-        $pdo = new PDO($dsn, $user, $pass, [
+        return new PDO($dsn, $user, $pass, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         ]);
-        return $pdo;
     }
 
     private static function fixEncoding(string $text): string
@@ -95,6 +142,8 @@ class Informe extends Model
             }
         }
 
-        return $parsed;
+        // El certificado (y la vista web) muestran las áreas en el orden
+        // institucional, no en el que quedaron guardadas en el informe.
+        return AreaOrder::sort($parsed);
     }
 }

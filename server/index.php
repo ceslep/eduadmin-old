@@ -44,6 +44,7 @@ $routes = [
     'POST /auth/register'    => 'AuthController::register',
     'GET /auth/profile'      => 'AuthController::profile',
     'POST /matricula/search' => 'MatriculaController::search',
+    'GET /years'             => 'InformeController::years',
 ];
 
 $routeKey = "$method $uri";

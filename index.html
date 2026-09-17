@@ -4,17 +4,46 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="EduAdmin - Panel de administracion educativa" />
-    <title>EduAdmin - Iniciar sesion</title>
-  </head>
-  <body class="antialiased">
+    <meta name="theme-color" content="#f7f4ed" />
+    <meta
+      name="description"
+      content="EduAdmin — consulta de informes académicos y emisión de certificados en Word para la institución educativa."
+    />
+    <title>EduAdmin · Certificados académicos</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
     <script>
-      (function() {
-        var t = localStorage.getItem('theme');
-        if (t === 'light') document.documentElement.classList.remove('dark');
-        else document.documentElement.classList.add('dark');
+      // Aplica el tema antes del primer pintado para evitar el destello blanco.
+      (function () {
+        var mode = null;
+        try {
+          var raw = localStorage.getItem('eduadmin.theme');
+          if (raw) {
+            var parsed = raw.charAt(0) === '"' ? JSON.parse(raw) : raw;
+            if (parsed === 'light' || parsed === 'dark') mode = parsed;
+          }
+        } catch (error) {
+          mode = null;
+        }
+
+        if (mode === null) {
+          mode =
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+        }
+
+        document.documentElement.classList.toggle('dark', mode === 'dark');
       })();
     </script>
+  </head>
+  <body class="antialiased">
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -1,22 +1,83 @@
 <script lang="ts">
-  import { user } from './lib/stores';
-  import Particles from './lib/Particles.svelte';
-  import Login from './lib/Login.svelte';
+  import { onMount } from 'svelte';
+  import { ApiError, getProfile } from './lib/api';
+  import { session } from './lib/stores.svelte';
+  import { toast } from './lib/toast.svelte';
+  import AppHeader from './lib/components/AppHeader.svelte';
+  import Toaster from './lib/components/Toaster.svelte';
   import Dashboard from './lib/Dashboard.svelte';
+  import Login from './lib/Login.svelte';
+
+  /**
+   * Antes de mostrar el panel se valida el token guardado: si ya expiró,
+   * el usuario ve el login en vez de un panel que falla en cada petición.
+   */
+  let booting = $state(session.isAuthenticated);
+
+  onMount(async () => {
+    if (!session.isAuthenticated) {
+      booting = false;
+      return;
+    }
+
+    const token = session.token;
+    if (!token) {
+      booting = false;
+      return;
+    }
+
+    try {
+      const user = await getProfile();
+      session.signIn(user, token);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 0) {
+        // El servidor no responde: no se cierra la sesión, se avisa.
+        toast.error('Sin conexión con el servidor', error.message);
+      } else if (!session.isAuthenticated) {
+        toast.info('Tu sesión expiró', 'Vuelve a iniciar sesión para continuar.');
+      }
+    } finally {
+      booting = false;
+    }
+  });
 </script>
 
-<div class="app-container min-h-screen bg-[var(--surface-base)]">
-  <!-- Background -->
-  <div class="fixed inset-0 bg-gradient-to-br from-gray-100 via-purple-50 to-gray-100 dark:from-gray-950 dark:via-purple-950/40 dark:to-gray-950 z-0"></div>
-  <div class="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-100/30 via-transparent to-transparent dark:from-purple-900/20 dark:via-transparent dark:to-transparent z-0"></div>
+<div class="paper-backdrop"></div>
 
-  <!-- Particles -->
-  <Particles />
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
 
-  <!-- Content -->
-  {#if $user}
-    <Dashboard />
-  {:else}
-    <Login />
+{#if booting}
+  <div class="relative z-10 flex min-h-screen flex-col items-center justify-center gap-3">
+    <span
+      class="spinner h-7 w-7 rounded-full border-2 border-line-strong border-t-accent"
+      aria-hidden="true"
+    ></span>
+    <p class="text-sm text-ink-muted">Verificando sesión…</p>
+  </div>
+{:else}
+  {#if session.isAuthenticated}
+    <AppHeader />
   {/if}
-</div>
+
+  <main
+    id="contenido"
+    class="app-container relative z-10 py-8 lg:py-10"
+  >
+    {#if session.isAuthenticated}
+      <Dashboard />
+    {:else}
+      <Login />
+    {/if}
+  </main>
+
+  {#if session.isAuthenticated}
+    <footer class="app-container relative z-10 pb-8">
+      <p class="border-t border-line pt-4 text-xs text-ink-subtle">
+        EduAdmin · Sistema de certificados académicos. Los datos provienen del archivo histórico
+        institucional.
+      </p>
+    </footer>
+  {/if}
+{/if}
+
+<Toaster />
